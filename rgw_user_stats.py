@@ -4,6 +4,7 @@ from __future__ import print_function
 import subprocess
 import argparse
 import json
+from datetime import datetime
 
 DEFAULT_STATS = {
                     "entries" : 0,
@@ -27,6 +28,11 @@ class RGWAdmin(object):
         except Exception as e:
             print (' '.join(cmd_args), "encountered exception: ",  str(e))
 
+def make_stats_dict(stats):
+    t = datetime.now()
+    time_str = t.strftime("%Y-%m-%d %H:%M:%S%f%Z")
+    return {"stats":stats, "last_stats_sync": time_str, "last_stats_update": time_str}
+
 def parse_bucket_stats(rgw_admin, uid):
     stats = rgw_admin.exec_cmd(['bucket','stats'])
     # TODO cache this in a file for subsequent calls
@@ -47,14 +53,13 @@ def parse_bucket_stats(rgw_admin, uid):
         stats = bucket_stat.get('usage',{})
         for _, kv in stats.items():
             user_stats[owner]["entries"] += kv.get('num_objects', 0)
-            user_stats[owner]["total_bytes"] += kv.get('size', 0)
-            user_stats[owner]["total_bytes_rounded"] = kv.get('size_kb',0)*1024
-
+            user_stats[owner]["total_bytes"] += kv.get('size_kb', 0)*1024
+            user_stats[owner]["total_bytes_rounded"] = kv.get('size_kb_actual',0)*1024
 
     if uid in user_stats:
-        return user_stats[uid]
+        return make_stats_dic(user_stats[uid])
 
-    return DEFAULT_STATS
+    return make_stats_dict(DEFAULT_STATS)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='aggregate bucket usage stats')
