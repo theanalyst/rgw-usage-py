@@ -5,6 +5,7 @@ import subprocess
 import argparse
 import json
 from datetime import datetime
+from collections import OrderedDict
 
 DEFAULT_STATS = {
                     "entries" : 0,
@@ -31,7 +32,9 @@ class RGWAdmin(object):
 def make_stats_dict(stats):
     t = datetime.now()
     time_str = t.strftime("%Y-%m-%d %H:%M:%S%f%Z")
-    return {"stats":stats, "last_stats_sync": time_str, "last_stats_update": time_str}
+    return OrderedDict([("stats",stats),
+                        ("last_stats_sync",time_str),
+                        ("last_stats_update", time_str)])
 
 def parse_bucket_stats(rgw_admin, uid):
     stats = rgw_admin.exec_cmd(['bucket','stats'])
@@ -57,7 +60,7 @@ def parse_bucket_stats(rgw_admin, uid):
             user_stats[owner]["total_bytes_rounded"] = kv.get('size_kb_actual',0)*1024
 
     if uid in user_stats:
-        return make_stats_dic(user_stats[uid])
+        return make_stats_dict(user_stats[uid])
 
     return make_stats_dict(DEFAULT_STATS)
 
@@ -69,4 +72,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     rgw_admin = RGWAdmin(args.name)
-    print(parse_bucket_stats(rgw_admin, args.uid))
+    print(json.dumps(parse_bucket_stats(rgw_admin, args.uid), indent=4))
